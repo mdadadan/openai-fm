@@ -6,10 +6,11 @@ import { Button } from "./ui/Button";
 import { appStore } from "@/lib/store";
 
 const PlayingWaveform = ({
-  audioLoaded,
+  // eslint / ts の unused 対策（使わないなら _ を付ける）
+  _audioLoaded,
   amplitudeLevels,
 }: {
-  audioLoaded: boolean;
+  _audioLoaded: boolean;
   amplitudeLevels: number[];
 }) => (
   <div className="w-[36px] h-[16px] relative left-[4px]">
@@ -42,22 +43,23 @@ export default function DownloadButton({
     const vibe =
       selectedEntry?.name?.toLowerCase().replace(/ /g, "-") ?? "audio";
 
-    // ✅ /api/generate に download=1 を付けて
-    //    ブラウザ標準の保存ダイアログを出す
     const url = new URL("/api/generate", window.location.origin);
     url.searchParams.set("input", input);
     url.searchParams.set("prompt", prompt);
     url.searchParams.set("voice", voice);
     url.searchParams.set("vibe", vibe);
-    url.searchParams.set("generation", crypto.randomUUID());
+
+    // crypto.randomUUID が環境で無いと落ちることがあるので安全に
+    const gen =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    url.searchParams.set("generation", gen);
+
     url.searchParams.set("download", "1");
 
     setLoading(true);
-
-    // ここが肝：fetch せずに「遷移」させる
     window.location.href = url.toString();
-
-    // UI用：少し待ってから戻す
     setTimeout(() => setLoading(false), 800);
   };
 
@@ -65,7 +67,7 @@ export default function DownloadButton({
     <Button color="tertiary" onClick={handleDownload} disabled={loading}>
       {loading ? (
         <PlayingWaveform
-          audioLoaded={false}
+          _audioLoaded={false}
           amplitudeLevels={
             amplitudeLevels?.length
               ? amplitudeLevels
