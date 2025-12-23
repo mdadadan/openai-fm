@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { Download } from "./ui/Icons";
 import { Button } from "./ui/Button";
@@ -38,22 +40,24 @@ export default function DownloadButton({
     const { selectedEntry, input, prompt, voice } = appStore.getState();
 
     const vibe =
-      selectedEntry?.name.toLowerCase().replace(/ /g, "-") ?? "audio";
+      selectedEntry?.name?.toLowerCase().replace(/ /g, "-") ?? "audio";
 
-    // ✅ 生成と同じ /api/generate に download=1 を付けて “ブラウザ標準の保存” を発動させる
-    //    これが一番壊れない（Blob/ServiceWorkerに依存しない）
+    // ✅ /api/generate に download=1 を付けて
+    //    ブラウザ標準の保存ダイアログを出す
     const url = new URL("/api/generate", window.location.origin);
     url.searchParams.set("input", input);
     url.searchParams.set("prompt", prompt);
     url.searchParams.set("voice", voice);
-    url.searchParams.set("generation", crypto.randomUUID());
     url.searchParams.set("vibe", vibe);
+    url.searchParams.set("generation", crypto.randomUUID());
     url.searchParams.set("download", "1");
 
     setLoading(true);
+
+    // ここが肝：fetch せずに「遷移」させる
     window.location.href = url.toString();
 
-    // 遷移（ダウンロード）開始後にすぐ戻す
+    // UI用：少し待ってから戻す
     setTimeout(() => setLoading(false), 800);
   };
 
@@ -62,11 +66,15 @@ export default function DownloadButton({
       {loading ? (
         <PlayingWaveform
           audioLoaded={false}
-          amplitudeLevels={amplitudeLevels?.length ? amplitudeLevels : [0.04, 0.04, 0.04, 0.04, 0.04]}
+          amplitudeLevels={
+            amplitudeLevels?.length
+              ? amplitudeLevels
+              : [0.04, 0.04, 0.04, 0.04, 0.04]
+          }
         />
       ) : (
         <Download />
-      )}{" "}
+      )}
       <span className="uppercase hidden md:inline pr-3">Download</span>
     </Button>
   );
