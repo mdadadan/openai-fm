@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini-tts",
+        model: process.env.TTS_MODEL ?? "tts-1",
         input,
         response_format,
         voice,
