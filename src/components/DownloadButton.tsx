@@ -9,26 +9,13 @@ export default function DownloadButton() {
   const [loading, setLoading] = useState(false);
 
   const handleDownload = () => {
-    const { selectedEntry, input, prompt, voice } = appStore.getState();
+    // ✅ 直前に PLAY で生成・再生した“同じ音”のURLを使う
+    const { latestAudioUrl } = appStore.getState() as any;
 
-    const vibe =
-      selectedEntry?.name?.toLowerCase().replace(/ /g, "-") ?? "audio";
+    // まだ一度も再生していない場合は何もしない（必要ならアラートにしてもOK）
+    if (!latestAudioUrl) return;
 
-    // ✅ /api/generate を “そのまま開く” + download=1
-    //    → ブラウザ標準の保存ダイアログが出る（Blob/ServiceWorker不要）
-    const url = new URL("/api/generate", window.location.origin);
-    url.searchParams.set("input", input);
-    url.searchParams.set("prompt", prompt);
-    url.searchParams.set("voice", voice);
-    url.searchParams.set("vibe", vibe);
-
-    // generation はキャッシュ回避用（無くても動くけど、付けると安定）
-    const gen =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    url.searchParams.set("generation", gen);
-
+    const url = new URL(latestAudioUrl, window.location.origin);
     url.searchParams.set("download", "1");
 
     setLoading(true);
