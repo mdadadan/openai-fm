@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Download } from "./ui/Icons";
 import { Button } from "./ui/Button";
 import { appStore } from "@/lib/store";
@@ -9,13 +9,13 @@ export default function DownloadButton() {
   const [loading, setLoading] = useState(false);
 
   const handleDownload = () => {
-    // ✅ 直前に PLAY で生成・再生した“同じ音”のURLを使う
-    const { latestAudioUrl } = appStore.getState() as any;
+    // ✅ PLAY が直前に作ったURL（=実際に再生した音）を使う
+    const latestAudioUrl = appStore.getState().latestAudioUrl;
 
-    // まだ一度も再生していない場合は何もしない（必要ならアラートにしてもOK）
+    // まだ再生してないなら何もしない
     if (!latestAudioUrl) return;
 
-    const url = new URL(latestAudioUrl, window.location.origin);
+    const url = new URL(latestAudioUrl);
     url.searchParams.set("download", "1");
 
     setLoading(true);
