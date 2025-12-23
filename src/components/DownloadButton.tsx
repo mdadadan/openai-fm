@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Download } from "./ui/Icons";
 import { Button } from "./ui/Button";
 import { appStore } from "@/lib/store";
@@ -16,13 +16,10 @@ const PlayingWaveform = ({
       return (
         <div
           key={idx}
-          className={`w-[2px] bg-white transition-all duration-150 rounded-[2px] absolute top-1/2 -translate-y-1/2 ${
-            audioLoaded ? "opacity-100" : "animate-wave"
-          }`}
+          className="absolute bottom-0 w-[4px] rounded-sm bg-current opacity-80"
           style={{
-            height,
-            animationDelay: `${idx * 0.15}s`,
             left: `${idx * 6}px`,
+            height,
           }}
         />
       );
@@ -30,106 +27,34 @@ const PlayingWaveform = ({
   </div>
 );
 
-const IS_CHROME =
-  // @ts-expect-error - it's a safe reach
-  navigator.userAgentData?.brands?.some(
-    (b: { brand: string }) => b.brand === "Google Chrome"
-  ) === true;
-
-export default function DownloadButton() {
-  const latestAudioUrl = appStore.useState((s) => s.latestAudioUrl);
-  const [dataUrl, setDataUrl] = useState<string | null>(null);
+export default function DownloadButton({
+  amplitudeLevels,
+}: {
+  amplitudeLevels: number[];
+}) {
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!latestAudioUrl) return;
-
-    let objectUrl = "";
-    const handler = (e: MessageEvent) => {
-      if (e.data.type === "ADD_TO_CACHE" && e.data.url === latestAudioUrl) {
-        objectUrl = URL.createObjectURL(e.data.blob);
-        setDataUrl(objectUrl);
-      }
-    };
-    navigator.serviceWorker.addEventListener("message", handler);
-
-    return () => {
-      setDataUrl(null);
-      URL.revokeObjectURL(objectUrl);
-      navigator.serviceWorker.removeEventListener("message", handler);
-    };
-  }, [latestAudioUrl]);
-
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        // update file name when updating the service worker to avoid cache issues
-        .register("/worker-444eae9e2e1bdd6edd8969f319655e70.js")
-        .catch((err) => console.error("SW registration failed", err));
-    }
-  }, []);
-
-  const handleDownload = async () => {
-    const {
-      selectedEntry,
-      input,
-      prompt,
-      voice,
-      latestAudioUrl: storeUrl,
-    } = appStore.getState();
+  const handleDownload = () => {
+    const { selectedEntry, input, prompt, voice } = appStore.getState();
 
     const vibe =
       selectedEntry?.name.toLowerCase().replace(/ /g, "-") ?? "audio";
 
-    const filename = `openai-fm-${voice}-${vibe}.${IS_CHROME ? "wav" : "mp3"}`;
+    // ✅ 生成と同じ /api/generate に download=1 を付けて “ブラウザ標準の保存” を発動させる
+    //    これが一番壊れない（Blob/ServiceWorkerに依存しない）
+    const url = new URL("/api/generate", window.location.origin);
+    url.searchParams.set("input", input);
+    url.searchParams.set("prompt", prompt);
+    url.searchParams.set("voice", voice);
+    url.searchParams.set("generation", crypto.randomUUID());
+    url.searchParams.set("vibe", vibe);
+    url.searchParams.set("download", "1");
 
-    if (!storeUrl) {
-      setLoading(true);
-      const form = new FormData();
-      form.append("input", input);
-      form.append("prompt", prompt);
-      form.append("voice", voice);
-      form.append("generation", crypto.randomUUID());
-      form.append("vibe", vibe);
+    setLoading(true);
+    window.location.href = url.toString();
 
-      const res = await fetch("/api/generate", { method: "POST", body: form });
-      const blob = await res.blob();
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setLoading(false);
-      return;
-    }
-
-    appStore.setState({ latestAudioUrl: null });
-
-    if (!dataUrl) {
-      setLoading(true);
-      const handler = (e: MessageEvent) => {
-        if (e.data.type === "ADD_TO_CACHE" && e.data.url === storeUrl) {
-          navigator.serviceWorker.removeEventListener("message", handler);
-          const link = document.createElement("a");
-          link.href = URL.createObjectURL(e.data.blob);
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          setLoading(false);
-        }
-      };
-      navigator.serviceWorker.addEventListener("message", handler);
-      return;
-    }
-
-    const link = document.createElement("a");
-    link.href = dataUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // 遷移（ダウンロード）開始後にすぐ戻す
+    setTimeout(() => setLoading(false), 800);
   };
 
   return (
@@ -137,7 +62,7 @@ export default function DownloadButton() {
       {loading ? (
         <PlayingWaveform
           audioLoaded={false}
-          amplitudeLevels={[0.04, 0.04, 0.04, 0.04, 0.04]}
+          amplitudeLevels={amplitudeLevels?.length ? amplitudeLevels : [0.04, 0.04, 0.04, 0.04, 0.04]}
         />
       ) : (
         <Download />
