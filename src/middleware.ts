@@ -2,8 +2,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
-  const password = process.env.BASIC_AUTH_PASSWORD;
+  const { pathname } = req.nextUrl;
 
+  // ★ API は完全にスキップ（最重要）
+  if (pathname.startsWith("/api")) {
+    return NextResponse.next();
+  }
+
+  const password = process.env.BASIC_AUTH_PASSWORD;
   if (!password) return NextResponse.next();
 
   const auth = req.headers.get("authorization");
