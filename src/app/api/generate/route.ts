@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         // ✅ GETと揃える（gpt-4o-mini-tts で403/権限エラーになるケースがあるため）
-        model: process.env.TTS_MODEL ?? "tts-1",
+        model: process.env.TTS_MODEL ?? "tts-1-hd",
         input,
         response_format,
         voice,
